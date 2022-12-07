@@ -2,6 +2,7 @@ package lua
 
 import (
 	"sort"
+	"strings"
 )
 
 func OpenTable(L *LState) int {
@@ -67,19 +68,43 @@ func tableConcat(L *LState) int {
 		return 1
 	}
 	//TODO should flushing?
-	retbottom := L.GetTop()
+
+	// ANCCY why use stack, not strings.Builder
+	l := j - i + 1
+	n := len(sep) * (l - 1)
 	for ; i <= j; i++ {
 		v := tbl.RawGetInt(i)
 		if !LVCanConvToString(v) {
 			L.RaiseError("invalid value (%s) at index %d in table for concat", v.Type().String(), i)
 		}
-		L.Push(v)
+		n += len(v.String())
+	}
+
+	var b strings.Builder
+	b.Grow(n)
+	b.WriteString(tbl.RawGetInt(i).String())
+	for ; i <= j; i++ {
+		b.WriteString(tbl.RawGetInt(i).String())
 		if i != j {
-			L.Push(sep)
+			b.WriteString(sep.String())
 		}
 	}
-	L.Push(stringConcat(L, L.GetTop()-retbottom, L.reg.Top()-1))
+	L.Push(LString(b.String()))
 	return 1
+
+	//retbottom := L.GetTop()
+	//for ; i <= j; i++ {
+	//	v := tbl.RawGetInt(i)
+	//	if !LVCanConvToString(v) {
+	//		L.RaiseError("invalid value (%s) at index %d in table for concat", v.Type().String(), i)
+	//	}
+	//	L.Push(v)
+	//	if i != j {
+	//		L.Push(sep)
+	//	}
+	//}
+	//L.Push(stringConcat(L, L.GetTop()-retbottom, L.reg.Top()-1))
+	//return 1
 }
 
 func tableInsert(L *LState) int {
